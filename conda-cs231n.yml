@@ -1,0 +1,15 @@
+name: cs231n
+channels:
+  - conda-forge
+  - default
+dependencies:
+  - python=3.6
+  - numpy
+  - pandas
+  - matplotlib
+  - keras
+  - tensorflow
+  - scikit-learn
+  - cython
+  - jupyter
+  - nb_conda_kernels
