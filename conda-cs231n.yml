@@ -13,3 +13,4 @@ dependencies:
   - cython
   - jupyter
   - nb_conda_kernels
+  - Pillow
