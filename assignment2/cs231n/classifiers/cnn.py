@@ -1,3 +1,4 @@
+from functools import reduce
 from builtins import object
 import numpy as np
 
@@ -53,7 +54,24 @@ class ThreeLayerConvNet(object):
         # **the width and height of the input are preserved**. Take a look at      #
         # the start of the loss() function to see how that happens.                #                           
         ############################################################################
-        pass
+        F = num_filters
+        C = input_dim[0]
+        self.conv_stride = 1
+        self.conv_pad = (filter_size - 1) // 2
+        self.pool_height = 2
+        self.pool_width = 2
+        self.pool_stride = 2
+        
+        self.params['W1'] = weight_scale * np.random.randn(F, C, filter_size, filter_size)
+        self.params['b1'] = np.zeros(F)
+        h = (input_dim[1] + 2*self.conv_pad - filter_size) // self.conv_stride + 1
+        w = (input_dim[2] + 2*self.conv_pad - filter_size) // self.conv_stride + 1
+        hh = (h - self.pool_height) // self.pool_stride + 1
+        ww = (w - self.pool_width) // self.pool_stride + 1
+        self.params['W2'] = weight_scale * np.random.randn(F * hh * ww, hidden_dim)
+        self.params['b2'] = np.zeros((hidden_dim,))
+        self.params['W3'] = weight_scale * np.random.randn(hidden_dim, num_classes)
+        self.params['b3'] = np.zeros((num_classes,))
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -74,11 +92,10 @@ class ThreeLayerConvNet(object):
 
         # pass conv_param to the forward pass for the convolutional layer
         # Padding and stride chosen to preserve the input spatial size
-        filter_size = W1.shape[2]
-        conv_param = {'stride': 1, 'pad': (filter_size - 1) // 2}
+        conv_param = {'stride': self.conv_stride, 'pad': self.conv_pad}
 
         # pass pool_param to the forward pass for the max-pooling layer
-        pool_param = {'pool_height': 2, 'pool_width': 2, 'stride': 2}
+        pool_param = {'pool_height': self.pool_height, 'pool_width': self.pool_width, 'stride': self.pool_stride}
 
         scores = None
         ############################################################################
@@ -89,7 +106,10 @@ class ThreeLayerConvNet(object):
         # Remember you can use the functions defined in cs231n/fast_layers.py and  #
         # cs231n/layer_utils.py in your implementation (already imported).         #
         ############################################################################
-        pass
+        A1, cache1 = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param) # conv -> relu -> max-pool
+        A2, cache2 = affine_relu_forward(A1, W2, b2) # affine -> relu
+        A3, cache3 = affine_forward(A2, W3, b3) # affine
+        scores = A3
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -108,7 +128,17 @@ class ThreeLayerConvNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
-        pass
+        loss, dout = softmax_loss(scores, y) # softmax
+        loss += 0.5 * self.reg * np.sum(W1*W1) 
+        loss += 0.5 * self.reg * np.sum(W2*W2) 
+        loss += 0.5 * self.reg * np.sum(W3*W3)
+        
+        dx3, grads['W3'], grads['b3'] = affine_backward(dout, cache3) # affine
+        grads['W3'] += self.reg*W3
+        dx2, grads['W2'], grads['b2'] = affine_relu_backward(dx3, cache2) # affine -> relu
+        grads['W2'] += self.reg*W2
+        dx1, grads['W1'], grads['b1'] = conv_relu_pool_backward(dx2, cache1) # conv -> relu -> max-pool
+        grads['W1'] += self.reg*W1
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
